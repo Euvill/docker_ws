@@ -1,5 +1,4 @@
-#ifndef LIDAR_LOCALIZATION_LOCALIZATION_FLOW_HPP_
-#define LIDAR_LOCALIZATION_LOCALIZATION_FLOW_HPP_
+#pragma once
 
 #include <ros/ros.h>
 // subscriber
@@ -16,29 +15,20 @@
 #include "lidar_localization/models/scan_adjust/distortion_adjust.hpp"
 #include "lidar_localization/matching/matching.hpp"
 
+#include "lidar_localization/models/kalman_filter/kalman_filter.hpp"
+
 namespace lidar_localization
 {
-    class LocalizationFlow
+    class MatchingFlow
     {
         public:
-            struct State 
-            {
-                Eigen::Vector3d p;
-                Eigen::Vector3d v;
-                Eigen::Quaterniond q;
-                Eigen::Vector3d bg;
-                Eigen::Vector3d ba;
-            };
-            struct errorState
-            {
-                Eigen::Matrix<double, 15, 1> x;
-                Eigen::Matrix<double, 15, 15> conv;
-            };
-            LocalizationFlow(ros::NodeHandle &nh);
+            MatchingFlow(ros::NodeHandle &nh);
 
             bool Run();
         
         private:
+            bool InitKalmanFilter(const YAML::Node& config_node);
+
             bool ReadData();
             bool InitCalibration();
             bool InitGNSS();
@@ -47,9 +37,6 @@ namespace lidar_localization
             bool TransformData();
             bool PublishData();
             bool SyncData(bool inited);
-            bool Filter();
-            bool Predict();
-            bool Correct();
             bool SavePose(std::ofstream& ofs, const Eigen::Matrix4f& pose);
 
         private:
@@ -68,8 +55,11 @@ namespace lidar_localization
             std::shared_ptr<OdometryPublisher> gnss_pub_ptr_;
             // models
             std::shared_ptr<DistortionAdjust> distortion_adjust_ptr_;
+            std::shared_ptr<KalmanFilter> kalman_filter_ptr_;
             std::shared_ptr<Matching> matching_ptr_;
 
+            KalmanFilter::IMUIntegration imu_integration;
+            
             Eigen::Matrix4f lidar_to_imu_ = Eigen::Matrix4f::Identity();
 
             std::deque<CloudData>    cloud_data_buff_;
@@ -84,33 +74,7 @@ namespace lidar_localization
 
             Eigen::Matrix4f gnss_pose_ = Eigen::Matrix4f::Identity();
 
-            Eigen::Vector3d V_n_g_;
-            Eigen::Vector3d V_n_a_;
-            Eigen::Vector3d V_n_bg_;
-            Eigen::Vector3d V_n_ba_;
-
-            State state_;
-            errorState error_state_;
-
-            double n_g_; // 陀螺仪测量噪声
-            double n_a_; // 加速度计测量噪声
-            double n_bg_;// 陀螺仪零偏噪声
-            double n_ba_;// 加速度计零偏噪声
-
-            double n_p_; // 激光雷达位置测量噪声
-            double n_phi_; // 激光雷达失准角测量噪声
-
-
-            Eigen::Vector3d gravity_n_ = Eigen::Vector3d(0.0, 0.0, -9.809432933396721);
-            double w_ie_ = 7.27220521664304e-05; // rad/s
-            double rm_   = 6371829.37587;
-            double rn_   = 6390325.45972;
-            double tau_gb_;
-            double tau_ga_;
-    
             std::ofstream ground_truth_ofs_;
             std::ofstream localization_ofs_;
     };
 }
-
-#endif

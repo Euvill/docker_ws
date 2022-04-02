@@ -148,15 +148,20 @@ bool Matching::TransformCurrentScan(const CloudData& cloud_data, Eigen::Matrix4f
 }
 
 bool Matching::SetGNSSPose(const Eigen::Matrix4f& gnss_pose) {
+
     current_gnss_pose_ = gnss_pose;
+
     SetInitPose(gnss_pose);
+    
     has_inited_ = true;
 
     return true;
 }
 
 bool Matching::SetInitPose(const Eigen::Matrix4f& init_pose) {
+
     init_pose_ = init_pose;
+
     ResetLocalMap(init_pose(0,3), init_pose(1,3), init_pose(2,3));
 
     return true;

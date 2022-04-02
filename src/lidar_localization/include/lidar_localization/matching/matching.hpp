@@ -1,8 +1,3 @@
-/*
- * @Description: 地图匹配定位算法
- * @Author: Ren Qian
- * @Date: 2020-02-04 18:52:45
- */
 #ifndef LIDAR_LOCALIZATION_MATCHING_MATCHING_HPP_
 #define LIDAR_LOCALIZATION_MATCHING_MATCHING_HPP_
 

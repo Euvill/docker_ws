@@ -1,13 +1,8 @@
-/*
- * @Description: 地图匹配定位的node文件
- * @Author: Ren Qian
- * @Date: 2020-02-05 02:56:27
- */
 #include <ros/ros.h>
 #include "glog/logging.h"
 
 #include "lidar_localization/global_defination/global_defination.h"
-#include "lidar_localization/matching/localization_flow.hpp"
+#include "lidar_localization/matching/matching_flow.hpp"
 
 using namespace lidar_localization;
 
@@ -19,13 +14,13 @@ int main(int argc, char *argv[]) {
     ros::init(argc, argv, "localization_node");
     ros::NodeHandle nh;
 
-    std::shared_ptr<LocalizationFlow> localization_flow_ptr = std::make_shared<LocalizationFlow>(nh);
+    std::shared_ptr<MatchingFlow> matching_flow_ptr = std::make_shared<MatchingFlow>(nh);
 
     ros::Rate rate(100);
     while (ros::ok()) {
         ros::spinOnce();
 
-        localization_flow_ptr->Run();
+        matching_flow_ptr->Run();
 
         rate.sleep();
     }
