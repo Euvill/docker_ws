@@ -1,8 +1,3 @@
-/*
- * @Description: 前端里程计算法
- * @Author: Ren Qian
- * @Date: 2020-02-04 18:53:06
- */
 #include "lidar_localization/matching/matching.hpp"
 
 #include <pcl/common/transforms.h>
@@ -10,6 +5,7 @@
 #include "glog/logging.h"
 
 #include "lidar_localization/global_defination/global_defination.h"
+
 #include "lidar_localization/models/registration/ndt_registration.hpp"
 #include "lidar_localization/models/registration/icp_m_registration.hpp"
 #include "lidar_localization/models/cloud_filter/voxel_filter.hpp"
@@ -156,13 +152,6 @@ bool Matching::SetGNSSPose(const Eigen::Matrix4f& gnss_pose) {
     SetInitPose(gnss_pose);
     has_inited_ = true;
 
-    // static int gnss_cnt = 0;
-    // if (gnss_cnt == 0) {
-    //     SetInitPose(gnss_pose);
-    // } else if (gnss_cnt > 3) {
-    //     has_inited_ = true;
-    // }
-    // gnss_cnt ++;
     return true;
 }
 

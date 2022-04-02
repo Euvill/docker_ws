@@ -26,6 +26,7 @@ LocalizationFlow::LocalizationFlow(ros::NodeHandle& nh) {
     matching_ptr_ = std::make_shared<Matching>();
     std::string config_file_path = WORK_SPACE_PATH + "/config/matching/kalman_filter.yaml";
     YAML::Node config_node = YAML::LoadFile(config_file_path);
+
     n_g_  = config_node["gyro_noise"].as<double>();
     n_a_  = config_node["acc_noise"].as<double>();
     n_bg_ = config_node["gyro_bias_noise"].as<double>();
@@ -35,13 +36,11 @@ LocalizationFlow::LocalizationFlow(ros::NodeHandle& nh) {
     n_p_  = config_node["dp_noise"].as<double>();
     n_phi_= config_node["dphi_noise"].as<double>();
 
-
     V_n_g_ = Eigen::Vector3d(n_g_, n_g_, n_g_);
     V_n_a_ = Eigen::Vector3d(n_a_, n_a_, n_a_);
     
     V_n_bg_ = Eigen::Vector3d(n_bg_, n_bg_, n_bg_);
     V_n_ba_ = Eigen::Vector3d(n_ba_, n_ba_, n_ba_);
-
 
     FileManager::CreateDirectory(WORK_SPACE_PATH + "/localization_data");
     FileManager::CreateFile(ground_truth_ofs_, WORK_SPACE_PATH + "/localization_data/ground_truth.txt");
@@ -169,8 +168,6 @@ bool LocalizationFlow::InitPose() {
     error_state_.conv.block<3, 3>(9, 9) = Eigen::Matrix3d::Identity() * 1e-4;
     error_state_.conv.block<3, 3>(12, 12) = Eigen::Matrix3d::Identity() * 1e-6;
     pose_inited = true;
-    // imu_data_buff_.pop_front();
-    // cloud_data_buff_.pop_front();
     TransformData();
     PublishData();
     return true;
@@ -330,8 +327,7 @@ bool LocalizationFlow::SyncData(bool inited)
 
         current_imu_data_.push_back(synced_data);
         cloud_data_buff_.pop_front();
-            // std::cout << std::setprecision(12) << "current_imu_data_.time " << current_imu_data_.front().time 
-            //     << "  " << current_imu_data_.back().time << std::endl;
+
         return true;
     }
     else
@@ -472,10 +468,6 @@ bool LocalizationFlow::Predict()
             // 2.3 速度更新
             V_n_k = V_n_k + V_n_f_k + V_cor_k;
 
-            // std::cout << std::endl;
-            // std::cout << "V_n_k: " << V_n_k(0) << " " << V_n_k(1) << " " << V_n_k(2) << std::endl;
-            // std::cout << "V_n_f_k: " << V_n_f_k(0) << " " << V_n_f_k(1) << " " << V_n_f_k(2) << std::endl;
-            // std::cout << "V_cor_k: " << V_cor_k(0) << " " << V_cor_k(1) << " " << V_cor_k(2) << std::endl;
             // 3. 位置解算
             P_n_k = P_n_k + 0.5 * (V_n_k_1 + V_n_k) * dt2;
 
