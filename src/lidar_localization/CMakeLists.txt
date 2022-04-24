@@ -53,14 +53,6 @@ file(GLOB_RECURSE THIRD_PARTY_SRCS "third_party/*.cpp")
 list(REMOVE_ITEM ALL_SRCS ${NODE_SRCS})
 list(REMOVE_ITEM ALL_SRCS ${THIRD_PARTY_SRCS})
 
-#add_executable(localization_node src/apps/localization_node.cpp ${ALL_SRCS})
-#add_dependencies(localization_node ${catkin_EXPORTED_TARGETS})
-#target_link_libraries(localization_node ${catkin_LIBRARIES} ${ALL_TARGET_LIBRARIES})
-
-add_executable(docker_node src/apps/docker_node.cpp ${ALL_SRCS})
-add_dependencies(docker_node ${catkin_EXPORTED_TARGETS})
-target_link_libraries(docker_node ${catkin_LIBRARIES} ${ALL_TARGET_LIBRARIES})
-
-#add_executable(pcl_save_node src/apps/pcl_save_node.cpp ${ALL_SRCS})
-#add_dependencies(pcl_save_node ${catkin_EXPORTED_TARGETS})
-#target_link_libraries(pcl_save_node ${catkin_LIBRARIES} ${ALL_TARGET_LIBRARIES})
+add_executable(localization_node src/apps/localization_node.cpp ${ALL_SRCS})
+add_dependencies(localization_node ${catkin_EXPORTED_TARGETS})
+target_link_libraries(localization_node ${catkin_LIBRARIES} ${ALL_TARGET_LIBRARIES})
