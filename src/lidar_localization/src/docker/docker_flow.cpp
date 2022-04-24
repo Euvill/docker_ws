@@ -12,10 +12,11 @@ DockerFlow::DockerFlow(ros::NodeHandle& nh) {
 
     scan_sub_ptr_  = std::make_shared<LaserScanSubscriber>(nh, "/scan", 100);
 
-    cloud_pub_ptr_      = std::make_shared<CloudPublisher>(nh, "/lidar/cloud", "/laser", 100);
-    laser_odom_pub_ptr_ = std::make_shared<OdometryPublisher>(nh, "/laser_localization", "/world", "/laser", 100);
+    cloud_pub_ptr_ = std::make_shared<CloudPublisher>(nh, "/lidar/cloud", "/laser", 100);
     
+    laser_odom_pub_ptr_ = std::make_shared<OdometryPublisher>(nh, "/laser_localization", "/world", "/laser", 100);
     laser_tf_pub_ptr_   = std::make_shared<TFBroadCaster>("/world", "/laser");
+    docker_tf_pub_ptr_  = std::make_shared<TFBroadCaster>("/world", "/docker");
 
     std::string config_file_path = WORK_SPACE_PATH + "/config/docker/docker.yaml";
     YAML::Node config_node = YAML::LoadFile(config_file_path);
@@ -87,6 +88,9 @@ bool DockerFlow::PublishData() {
     laser_tf_pub_ptr_->SendTransform(lidar_pose_, current_scan_data_.time);
 
     cloud_pub_ptr_->Publish(current_scan_data_.cloud_ptr, current_scan_data_.time);
+
+    if(docker_matching_ptr_->GetDockerPose(current_scan_data_, docker_pose_, lidar_pose_)) 
+        docker_tf_pub_ptr_->SendTransform(docker_pose_, current_scan_data_.time);
 
     return true;
 }

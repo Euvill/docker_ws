@@ -2,6 +2,8 @@
 
 #include <pcl/common/transforms.h>
 #include <pcl/io/pcd_io.h>
+#include <unordered_map>
+
 #include "glog/logging.h"
 
 #include "lidar_localization/global_defination/global_defination.h"
@@ -13,7 +15,8 @@
 
 namespace lidar_localization {
 DockerMatching::DockerMatching(const YAML::Node& config_node)
-    :local_map_ptr_(new CloudData::CLOUD()) {
+    :local_map_ptr_(new CloudData::CLOUD()),
+     cloud_pattern_ptr_(new CloudData::CLOUD()) {
     
     InitWithConfig(config_node);
 }
@@ -23,6 +26,8 @@ bool DockerMatching::InitWithConfig(const YAML::Node& config_node) {
     std::cout << "-----------------地图定位初始化-------------------" << std::endl;
 
     InitParam(config_node);
+
+    InitDockerParam(config_node);
 
     InitRegistration(registration_ptr_, config_node);
 
@@ -40,6 +45,34 @@ bool DockerMatching::InitParam(const YAML::Node& config_node) {
 
     return true;
 }
+
+bool DockerMatching::InitDockerParam(const YAML::Node& config_node) {
+
+    std::cout << "load docker pattern... " << std::endl;
+    std::string docker_pattern_path = config_node["docker_pattern_path"].as<std::string>();
+    pcl::io::loadPCDFile(docker_pattern_path, *cloud_pattern_ptr_);
+    std::cout << "load docker pattern success " << std::endl;
+
+    const YAML::Node Docker_Node = config_node["Docker"];
+    const YAML::Node Filter_Node = Docker_Node["voxel_filter"];
+    const YAML::Node KdTree_Node = Docker_Node["KdTree"];
+    const YAML::Node Match_Node  = Docker_Node["MatchParameter"];
+
+    filter_size_[0] = Filter_Node["leaf_size"][0].as<float>();
+    filter_size_[1] = Filter_Node["leaf_size"][1].as<float>();
+    filter_size_[2] = Filter_Node["leaf_size"][2].as<float>();
+
+    ClusterTolerance_ = KdTree_Node["ClusterTolerance"].as<float>();
+    MinClusterSize_   = KdTree_Node["MinClusterSize"].as<int>();
+    MaxClusterSize_   = KdTree_Node["MaxClusterSize"].as<int>();
+
+    FitnessScore_ = Match_Node["FitnessSocre"].as<float>();
+
+    std::cout << "FitnessScore_: " << FitnessScore_ << std::endl;
+
+    return true;
+}
+
 
 bool DockerMatching::InitRegistration(std::shared_ptr<RegistrationInterface>& registration_ptr, const YAML::Node& config_node) {
     std::string registration_method = config_node["registration_method"].as<std::string>();
@@ -115,10 +148,11 @@ bool DockerMatching::Update(const CloudData& cloud_data, Eigen::Matrix4f& cloud_
         cloud_distance = calculateCloudDistance(last_cloud_ptr_, result_cloud_ptr);
 
     // 匹配之后根据距离判断是否需要生成新的关键帧，如果需要，则做相应更新
-    std::cout << "pose , " << current_frame_.pose(0,3) << " , " 
+    /*std::cout << "pose , " << current_frame_.pose(0,3) << " , " 
                            << current_frame_.pose(1,3) << " , " 
                            << current_frame_.pose(2,3) << std::endl;
-                         
+     */
+                        
     if (cloud_distance > 500.0) {
 
         std::cout << "cloud_distance , " << cloud_distance << std::endl;
@@ -199,4 +233,87 @@ bool DockerMatching::UpdateWithNewFrame(const Frame& new_key_frame) {
 
     return true;
 }
+
+bool DockerMatching::GetDockerPose(const CloudData& cloud_data, Eigen::Matrix4f& cloud_pose, const Eigen::Matrix4f& laser_pose) {
+    static Eigen::Matrix4f last_cloud_pose = Eigen::Matrix4f::Identity();
+    static bool flag = false;
+    pcl::VoxelGrid<pcl::PointXYZ> vg;
+	pcl::PointCloud<pcl::PointXYZ>::Ptr cloud_filtered(new pcl::PointCloud<pcl::PointXYZ>);
+	vg.setInputCloud(cloud_data.cloud_ptr);
+	vg.setLeafSize(filter_size_[0], filter_size_[1], filter_size_[2]);
+	vg.filter(*cloud_filtered);
+
+    pcl::search::KdTree<pcl::PointXYZ>::Ptr tree(new pcl::search::KdTree<pcl::PointXYZ>);
+    tree->setInputCloud(cloud_filtered);
+
+    std::vector<pcl::PointIndices> cluster_indices;
+	pcl::EuclideanClusterExtraction<pcl::PointXYZ> ec;
+	ec.setClusterTolerance(ClusterTolerance_); 
+	ec.setMinClusterSize(MinClusterSize_);
+	ec.setMaxClusterSize(MaxClusterSize_);
+	ec.setSearchMethod(tree);
+	ec.setInputCloud(cloud_filtered);
+	ec.extract(cluster_indices);
+
+    std::unordered_map<float, Eigen::Vector4f> fitness_centroid_map;
+    float min_fitness = 10000.0;
+
+    for (std::vector<pcl::PointIndices>::const_iterator it = cluster_indices.begin(); it != cluster_indices.end(); ++it) {
+		pcl::PointCloud<pcl::PointXYZ>::Ptr cloud_cluster(new pcl::PointCloud<pcl::PointXYZ>);
+
+		std::vector<int> indices = it->indices;
+		pcl::copyPointCloud(*cloud_filtered, indices, *cloud_cluster);
+
+		cloud_cluster->width = cloud_cluster->points.size();
+		cloud_cluster->height = 1; // unorganized point cloud dataset
+		cloud_cluster->is_dense = true;
+
+		pcl::PointCloud<pcl::PointXYZ>::Ptr cloud_src(new pcl::PointCloud<pcl::PointXYZ>);
+		pcl::copyPointCloud(*cloud_cluster, *cloud_src);
+
+		pcl::IterativeClosestPoint<pcl::PointXYZ, pcl::PointXYZ> icp;
+		icp.setInputSource(cloud_src);
+		icp.setInputTarget(cloud_pattern_ptr_);
+		icp.setMaximumIterations(30);
+		icp.align(*cloud_src);
+
+		if (icp.hasConverged() && icp.getFitnessScore() < FitnessScore_) {
+
+            Eigen::Vector4f centroid;
+            pcl::compute3DCentroid(*cloud_cluster, centroid);
+            
+            fitness_centroid_map[icp.getFitnessScore()] = centroid;
+
+            min_fitness = min_fitness > icp.getFitnessScore() ? icp.getFitnessScore() : min_fitness;
+		}
+	}
+
+    if (min_fitness != 10000.0) {
+
+        cloud_pose(0, 3) = fitness_centroid_map[min_fitness](0) + laser_pose(0, 3);
+        cloud_pose(1, 3) = fitness_centroid_map[min_fitness](1) + laser_pose(1, 3);
+
+        float pose_diff = fabs(last_cloud_pose(0,3) - cloud_pose(0,3)) + 
+                          fabs(last_cloud_pose(1,3) - cloud_pose(1,3));
+
+        if (flag && pose_diff > 0.5) {
+            std::cout << "no docker TF" << std::endl;
+            cloud_pose = last_cloud_pose;
+            return false;
+        }
+
+        std::cout << "FitnessScore: " << min_fitness << std::endl;
+        std::cout << "find docker pose: " << cloud_pose(0, 3) << "," 
+                                          << cloud_pose(1, 3) << std::endl;
+        
+        last_cloud_pose = cloud_pose;
+
+        flag = true;
+    }
+
+
+    return true;
+}
+
+
 }

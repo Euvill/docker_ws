@@ -11,6 +11,7 @@
 #include "lidar_localization/publisher/cloud_publisher.hpp"
 #include "lidar_localization/publisher/odometry_publisher.hpp"
 #include "lidar_localization/publisher/tf_broadcaster.hpp"
+#include "lidar_localization/publisher/image_publisher.hpp"
 
 #include "lidar_localization/docker/docker_matching.hpp"
 
@@ -36,9 +37,10 @@ namespace lidar_localization
             // subscriber
             std::shared_ptr<LaserScanSubscriber> scan_sub_ptr_;
             // publisher
-            std::shared_ptr<CloudPublisher> cloud_pub_ptr_;
+            std::shared_ptr<CloudPublisher>    cloud_pub_ptr_;
             std::shared_ptr<OdometryPublisher> laser_odom_pub_ptr_;
-            std::shared_ptr<TFBroadCaster>  laser_tf_pub_ptr_;
+            std::shared_ptr<TFBroadCaster>     laser_tf_pub_ptr_;
+            std::shared_ptr<TFBroadCaster>     docker_tf_pub_ptr_;
 
             std::shared_ptr<DockerMatching> docker_matching_ptr_;
 
@@ -47,5 +49,6 @@ namespace lidar_localization
             CloudData current_scan_data_;
 
             Eigen::Matrix4f lidar_pose_ = Eigen::Matrix4f::Identity();
+            Eigen::Matrix4f docker_pose_ = Eigen::Matrix4f::Identity();
     };
 }

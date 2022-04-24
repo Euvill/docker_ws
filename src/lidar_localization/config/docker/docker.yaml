@@ -1,3 +1,4 @@
+docker_pattern_path: /home/euvill/Desktop/docker_ws/src/lidar_localization/config/docker/cloud_cluster_1.pcd
 # 匹配
 registration_method: NDT   # 选择点云匹配方法，目前支持：NDT 
 
@@ -27,3 +28,13 @@ voxel_filter:
         leaf_size: [0.01, 0.01, 0.01]
     frame:
         leaf_size: [0.01, 0.01, 0.01]
+
+Docker:
+    voxel_filter:
+        leaf_size: [0.001, 0.001, 0.001]
+    KdTree:
+        ClusterTolerance: 0.1 # 10cm
+        MinClusterSize: 40
+        MaxClusterSize: 120
+    MatchParameter:
+        FitnessSocre: 0.16

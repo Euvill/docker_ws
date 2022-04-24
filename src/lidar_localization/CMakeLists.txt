@@ -15,6 +15,7 @@ find_package(catkin REQUIRED COMPONENTS
   laser_geometry
   geometry_msgs
   tf
+  cv_bridge
   eigen_conversions
   message_generation 
   std_srvs
