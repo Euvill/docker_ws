@@ -35,6 +35,6 @@ Docker:
     KdTree:
         ClusterTolerance: 0.1 # 10cm
         MinClusterSize: 40
-        MaxClusterSize: 120
+        MaxClusterSize: 100
     MatchParameter:
         FitnessSocre: 0.16
